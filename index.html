@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Apps">
+<title>Apps</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, sans-serif;
+    background: #111; color: #eee;
+    padding: 1.25rem 1rem 2rem;
+  }
+  h1 { font-size: 1.15rem; font-weight: 650; margin: 0 0 .25rem; }
+  p.sub { color: #888; margin: 0 0 1rem; font-size: .85rem; }
+  .card {
+    display: block; text-decoration: none; color: inherit;
+    background: #1c1c1c; border: 1px solid #2a2a2a;
+    border-radius: 14px; padding: 1rem 1.1rem; margin: 0 0 .65rem;
+  }
+  .card:active { background: #252525; }
+  .name { font-weight: 650; margin: 0 0 .2rem; }
+  .desc { color: #999; font-size: .85rem; margin: 0; }
+  .meta { color: #666; font-size: .75rem; margin: .4rem 0 0; }
+  .err { color: #f88; }
+</style>
+</head>
+<body>
+  <h1>Apps</h1>
+  <p class="sub">Public GitHub repos · auto-updates</p>
+  <div id="list">Loading…</div>
+<script>
+const USER = 'nyanpiggle';
+const SKIP = new Set(['app-hub']);
+
+function liveUrl(repo) {
+  if (repo.homepage) return repo.homepage;
+  if (repo.has_pages) return `https://${USER}.github.io/${repo.name}/`;
+  return repo.html_url;
+}
+
+async function load() {
+  const el = document.getElementById('list');
+  try {
+    const res = await fetch(`https://api.github.com/users/${USER}/repos?per_page=100&sort=updated`);
+    if (!res.ok) throw new Error(res.status);
+    const repos = (await res.json())
+      .filter(r => !r.fork && !r.archived && !SKIP.has(r.name))
+      .sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at));
+    if (!repos.length) { el.textContent = 'No public repos yet.'; return; }
+    el.innerHTML = repos.map(r => {
+      const href = liveUrl(r);
+      const kind = r.homepage || r.has_pages ? 'app' : 'repo';
+      return `<a class="card" href="${href}">
+        <p class="name">${r.name}</p>
+        <p class="desc">${r.description || ''}</p>
+        <p class="meta">${kind}</p>
+      </a>`;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = `<p class="err">Could not load list. ${e.message}</p>`;
+  }
+}
+load();
+</script>
+</body>
+</html>
